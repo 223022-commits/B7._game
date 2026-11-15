@@ -1,9 +1,9 @@
-DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    !<titl<e>リッチオセロ</title>
+    <title>リッチオセロ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
@@ -269,6 +269,7 @@ DOCTYPE html>
     let currentPlayer = BLACK;
     let isGameOver = false;
     let isAnimating = false;
+    let gameSession = 0;
 
     // 方向 (8方向)
     const DIRECTIONS = [
@@ -290,6 +291,7 @@ DOCTYPE html>
 
     // === 初期化 ===
     function initGame() {
+        gameSession++;
         boardState = Array.from({length: 8}, () => Array(8).fill(EMPTY));
         currentPlayer = BLACK;
         isGameOver = false;
@@ -304,6 +306,7 @@ DOCTYPE html>
         createBoardDOM();
         updateUI();
         gameOverModal.classList.remove('active');
+        toast.classList.remove('show');
     }
 
     // === DOM生成 ===
@@ -337,12 +340,14 @@ DOCTYPE html>
         const flippable = getFlippableDiscs(row, col, currentPlayer);
         
         if (flippable.length > 0) {
+            const moveSession = gameSession;
             isAnimating = true;
             // 石を置く
             placeDisc(row, col, currentPlayer);
             
             // 裏返す処理
-            await flipDiscs(flippable, currentPlayer);
+            await flipDiscs(flippable, currentPlayer, moveSession);
+            if (moveSession !== gameSession) return;
             
             // ターン交代と判定
             changeTurn();
@@ -385,7 +390,7 @@ DOCTYPE html>
     }
 
     // === 石を裏返す(アニメーション付き) ===
-    function flipDiscs(discs, player) {
+    function flipDiscs(discs, player, moveSession) {
         return new Promise(resolve => {
             let completed = 0;
             
@@ -394,6 +399,10 @@ DOCTYPE html>
             discs.forEach((discInfo, index) => {
                 // 少し時間差をつけてパタパタめくる演出
                 setTimeout(() => {
+                    if (moveSession !== gameSession) {
+                        resolve();
+                        return;
+                    }
                     const r = discInfo.r;
                     const c = discInfo.c;
                     boardState[r][c] = player;
@@ -540,15 +549,19 @@ DOCTYPE html>
         resultTitle.innerText = title;
         resultMessage.innerText = `黒: ${blackCount}  -  白: ${whiteCount}`;
         
+        const endedSession = gameSession;
         setTimeout(() => {
+            if (endedSession !== gameSession) return;
             gameOverModal.classList.add('active');
         }, 500);
     }
 
     function showToast(msg) {
+        const toastSession = gameSession;
         toast.innerText = msg;
         toast.classList.add('show');
         setTimeout(() => {
+            if (toastSession !== gameSession) return;
             toast.classList.remove('show');
         }, 3000);
     }
